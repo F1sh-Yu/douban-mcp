@@ -62,7 +62,25 @@ export async function searchMovies(params: {
   q: string
 }) {
   const res = await requestFrodoApi(`/search/movie?q=${params.q}`)
-  return res?.items ? res.items.map(_ => _.target) : [];
+  return res?.items ? res.items.map(_ => ({
+    ..._.target,
+    target_type: _.target_type,
+    type_name: _.type_name
+  })) : [];
+}
+
+// 获取电影详情
+export async function getMovieDetail(params: {
+  id: string
+}) {
+  return requestFrodoApi(`/movie/${params.id}`);
+}
+
+// 获取电视剧详情
+export async function getTVDetail(params: {
+  id: string
+}) {
+  return requestFrodoApi(`/tv/${params.id}`);
 }
 
 // 获取电影长评列表

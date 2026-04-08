@@ -7,7 +7,7 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { TOOL } from "./types.js";
-import { getBookReviews, getGroupTopicDetail, getGroupTopics, getMovieReviews, getTVReviews, searchBooks, searchMovies } from "./api.js";
+import { getBookReviews, getGroupTopicDetail, getGroupTopics, getMovieDetail, getMovieReviews, getTVDetail, getTVReviews, searchBooks, searchMovies } from "./api.js";
 import json2md from 'json2md'
 import open from 'open'
 import dayjs from "dayjs";
@@ -20,6 +20,57 @@ const server = new McpServer(
     version: "0.2.0",
   }
 );
+
+const formatSubjectDetail = (subject: any) => {
+  const lines = [
+    `title: ${subject.title || ''}`,
+    `original_title: ${subject.original_title || ''}`,
+    `year: ${subject.year || ''}`,
+    `type: ${subject.type || subject.subtype || ''}`,
+    `subtype: ${subject.subtype || ''}`,
+    `rating: ${subject.rating?.value || 0} (${subject.rating?.count || 0}人)`,
+    `genres: ${(subject.genres || []).join(' | ')}`,
+    `countries: ${(subject.countries || []).join(' | ')}`,
+    `languages: ${(subject.languages || []).join(' | ')}`,
+    `pubdate: ${(subject.pubdate || []).join(' | ')}`,
+    `durations: ${(subject.durations || []).join(' | ')}`,
+    `directors: ${(subject.directors || []).map((_: any) => _.name).join(' | ')}`,
+    `actors: ${(subject.actors || []).map((_: any) => _.name).join(' | ')}`,
+    `aka: ${(subject.aka || []).join(' | ')}`,
+    `url: ${subject.url || ''}`,
+    '',
+    'intro:',
+    subject.intro || '',
+    '',
+    'raw_json:',
+    JSON.stringify(subject, null, 2)
+  ]
+
+  return lines.join('\n')
+}
+
+const formatSearchMovies = (subjects: any[]) => {
+  if (!subjects.length) {
+    return ['No results found.', '', 'raw_json:', '[]'].join('\n')
+  }
+
+  const lines = subjects.flatMap((subject, index) => [
+    `result ${index + 1}:`,
+    `title: ${subject.title || ''}`,
+    `type: ${subject.type || subject.target_type || subject.subtype || ''}`,
+    `year: ${subject.year || ''}`,
+    `rating: ${subject.rating?.value || 0} (${subject.rating?.count || 0}人)`,
+    `subtitle: ${subject.card_subtitle || ''}`,
+    `id: ${subject.id || ''}`,
+    `uri: ${subject.uri || ''}`,
+    ''
+  ])
+
+  lines.push('raw_json:')
+  lines.push(JSON.stringify(subjects, null, 2))
+
+  return lines.join('\n')
+}
 
 // 搜索图书
 server.tool(
@@ -98,24 +149,59 @@ server.tool(
     }
 
     const movies = await searchMovies(args)
-    const text = json2md({
-      table: {
-        headers: ['title', 'subtitle', 'publish_date', 'rating', 'id'],
-        rows: movies.map(_ => ({
-          id: _.id,
-          title: _.title,
-          subtitle: _.card_subtitle,
-          publish_date: _.year,
-          rating: `${_.rating?.value || '0'} (${_.rating?.count || 0}人)`,
-        }))
-      }
-    })
+    const text = formatSearchMovies(movies)
 
     return {
       content: [{ type: 'text', text }]
     }
   }
 );
+
+// 获取电影详情
+server.tool(
+  TOOL.GET_MOVIE_DETAIL,
+  "get movie detail",
+  {
+    id: z.string().describe('douban movie id, e.g. "1291546"')
+  },
+  async (args) => {
+    if (!args.id) {
+      throw new McpError(ErrorCode.InvalidParams, "douban movie id must be provided")
+    }
+
+    const movie = await getMovieDetail({ id: args.id })
+    if (!movie?.id) {
+      throw new McpError(ErrorCode.InvalidRequest, "request failed")
+    }
+
+    return {
+      content: [{ type: "text", text: formatSubjectDetail(movie) }]
+    }
+  }
+)
+
+// 获取电视剧详情
+server.tool(
+  TOOL.GET_TV_DETAIL,
+  "get tv detail",
+  {
+    id: z.string().describe('douban tv id, e.g. "2995166"')
+  },
+  async (args) => {
+    if (!args.id) {
+      throw new McpError(ErrorCode.InvalidParams, "douban tv id must be provided")
+    }
+
+    const tv = await getTVDetail({ id: args.id })
+    if (!tv?.id) {
+      throw new McpError(ErrorCode.InvalidRequest, "request failed")
+    }
+
+    return {
+      content: [{ type: "text", text: formatSubjectDetail(tv) }]
+    }
+  }
+)
 
 // 获取电影长评列表
 server.tool(

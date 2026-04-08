@@ -2,6 +2,8 @@ export enum TOOL {
   SEARCH_BOOK = 'search-book',
   LIST_BOOK_REVIEWS = 'list-book-reviews',
   SEARCH_MOVIE = 'search-movie',
+  GET_MOVIE_DETAIL = 'get-movie-detail',
+  GET_TV_DETAIL = 'get-tv-detail',
   LIST_MOVIE_REVIEWS = 'list-movie-reviews',
   BROWSE = 'browse',
   LIST_GROUP_TOPICS = 'list-group-topics',
